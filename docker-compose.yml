@@ -1,0 +1,93 @@
+services:
+  pipeline-init:
+    build:
+      context: .
+      target: pipeline
+    env_file:
+      - .env
+    environment:
+      PIPELINE_DATA_ROOT: /data
+      PIPELINE_MODE: init
+    command: ["python", "/app/docker/pipeline_release.py", "--mode", "init"]
+    volumes:
+      - pipeline-data:/data
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      target: backend
+    env_file:
+      - .env
+    environment:
+      HARDCOVER_DB_PATH: /data/current/hardcover.db
+      HARDCOVER_MODEL_PATH: /data/current/svd_model.npz
+      HARDCOVER_CORS_ORIGINS: ${HARDCOVER_CORS_ORIGINS:-http://localhost:4173,http://127.0.0.1:4173}
+      BACKEND_HOST: 0.0.0.0
+      BACKEND_PORT: 8000
+      PIPELINE_DATA_ROOT: /data
+    depends_on:
+      pipeline-init:
+        condition: service_completed_successfully
+    volumes:
+      - pipeline-data:/data:ro
+    ports:
+      - "8000:8000"
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=5).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      target: frontend
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+      FRONTEND_HOST: 0.0.0.0
+      FRONTEND_PORT: 4173
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "4173:4173"
+    restart: always
+
+  pipeline-scheduler:
+    build:
+      context: .
+      target: pipeline
+    env_file:
+      - .env
+    environment:
+      PIPELINE_DATA_ROOT: /data
+      PIPELINE_REFRESH_CRON: ${PIPELINE_REFRESH_CRON:-0 3 1 * *}
+    command: ["python", "/app/docker/scheduler.py"]
+    depends_on:
+      pipeline-init:
+        condition: service_completed_successfully
+    volumes:
+      - pipeline-data:/data
+    restart: unless-stopped
+
+  pipeline-refresh:
+    build:
+      context: .
+      target: pipeline
+    env_file:
+      - .env
+    environment:
+      PIPELINE_DATA_ROOT: /data
+      PIPELINE_MODE: refresh
+    command: ["python", "/app/docker/pipeline_release.py", "--mode", "refresh"]
+    volumes:
+      - pipeline-data:/data
+    profiles:
+      - manual
+    restart: "no"
+
+volumes:
+  pipeline-data:
