@@ -18,6 +18,7 @@ DB_PATH = env_path("HARDCOVER_DB_PATH", DEFAULT_DB_PATH)
 
 BATCH_SIZE = 100           # API limits
 RATE_LIMIT_SECONDS = 5     # Time to wait between requests to respect rate limits
+PROGRESS_LOG_INTERVAL_USERS = 1000
 
 def extract_genres(raw_tags):
     """Normalize Hardcover cached_tags payloads into structured genre objects."""
@@ -239,8 +240,14 @@ def main():
     ensure_parent_dir(DB_PATH)
     conn = sqlite3.connect(DB_PATH)
     offset = 0
+    total_users = 0
+    next_progress_log = PROGRESS_LOG_INTERVAL_USERS
 
-    with tqdm(unit="users") as progress:
+    print(
+        f"fetch_ratings: starting import with batch_size={BATCH_SIZE}, rate_limit={RATE_LIMIT_SECONDS}s",
+        flush=True,
+    )
+    with tqdm(unit="users", disable=not sys.stderr.isatty()) as progress:
         while True:
             cycle_start = time.monotonic()
             variables = {
@@ -253,14 +260,29 @@ def main():
                 break
 
             upsert_data(conn, users)
-            progress.update(len(users))
-            offset += BATCH_SIZE
+            batch_count = len(users)
+            progress.update(batch_count)
+            total_users += batch_count
+            offset += batch_count
 
-            sleep_for = RATE_LIMIT_SECONDS - (time.monotonic() - cycle_start)
+            cycle_elapsed = time.monotonic() - cycle_start
+            if total_users >= next_progress_log or batch_count < BATCH_SIZE:
+                print(
+                    (
+                        f"fetch_ratings: imported {total_users} users "
+                        f"(last batch={batch_count}, offset={offset}, cycle={cycle_elapsed:.1f}s)"
+                    ),
+                    flush=True,
+                )
+                while total_users >= next_progress_log:
+                    next_progress_log += PROGRESS_LOG_INTERVAL_USERS
+
+            sleep_for = RATE_LIMIT_SECONDS - cycle_elapsed
             if sleep_for > 0:
                 time.sleep(sleep_for)
 
     conn.close()
+    print(f"fetch_ratings: completed import of {total_users} users", flush=True)
 
 
 if __name__ == "__main__":
