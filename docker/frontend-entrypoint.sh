@@ -11,4 +11,4 @@ window.__APP_CONFIG__ = {
 };
 EOF
 
-exec npm run preview -- --host "${host}" --port "${port}"
+exec node /app/docker/frontend-server.mjs

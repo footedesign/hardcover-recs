@@ -55,6 +55,7 @@ COPY --from=frontend-build --chown=node:node /app/frontend/dist /app/frontend/di
 COPY --from=frontend-build --chown=node:node /app/frontend/node_modules /app/frontend/node_modules
 COPY --from=frontend-build --chown=node:node /app/frontend/package.json /app/frontend/package.json
 COPY --chown=node:node docker/frontend-entrypoint.sh /app/docker/frontend-entrypoint.sh
+COPY --chown=node:node docker/frontend-server.mjs /app/docker/frontend-server.mjs
 
 RUN chmod +x /app/docker/frontend-entrypoint.sh
 
