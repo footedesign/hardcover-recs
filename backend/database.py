@@ -7,7 +7,8 @@ from .config import get_settings
 @contextmanager
 def get_connection():
     settings = get_settings()
-    conn = sqlite3.connect(settings.db_path)
+    db_uri = f"file:{settings.db_path}?mode=ro&immutable=1"
+    conn = sqlite3.connect(db_uri, uri=True)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
