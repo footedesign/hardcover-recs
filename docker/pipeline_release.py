@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,8 +31,12 @@ def release_id() -> str:
 
 
 def run_step(script_name: str, env: dict[str, str]) -> None:
+    started = time.monotonic()
+    print(f"pipeline: starting {script_name}", flush=True)
     command = [sys.executable, str(PROJECT_ROOT / "scripts" / script_name)]
     subprocess.run(command, cwd=PROJECT_ROOT, env=env, check=True)
+    elapsed = time.monotonic() - started
+    print(f"pipeline: finished {script_name} in {elapsed:.1f}s", flush=True)
 
 
 def switch_current_symlink(target_dir: Path) -> None:
@@ -73,6 +78,7 @@ def main() -> None:
     RELEASES_DIR.mkdir(parents=True, exist_ok=True)
     new_release = RELEASES_DIR / release_id()
     new_release.mkdir(parents=True, exist_ok=False)
+    print(f"pipeline: building release {new_release.name} in {new_release}", flush=True)
 
     env = os.environ.copy()
     env["HARDCOVER_DB_PATH"] = str(new_release / "hardcover.db")
