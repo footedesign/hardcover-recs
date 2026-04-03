@@ -451,7 +451,11 @@ function App() {
               {selectedBooks.map((book) => (
                 <span className="pill" key={book.id}>
                   {book.title}
-                  <button onClick={() => removeSelected(book.id)} aria-label="Remove">
+                  <button
+                    type="button"
+                    onClick={() => removeSelected(book.id)}
+                    aria-label="Remove"
+                  >
                     ×
                   </button>
                 </span>
@@ -480,7 +484,7 @@ function App() {
               {rec.cover_url ? (
                 <img src={rec.cover_url} alt={rec.title} />
               ) : (
-                <div style={{ width: 96, height: 144, background: "#e2e8f0" }} />
+                <div className="book-cover-placeholder" aria-hidden="true" />
               )}
               <div>
                 <h3>
@@ -510,7 +514,7 @@ function App() {
                   {rec.description ??
                     "No description available for this title yet."}
                 </p>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <div className="genre-chip-list">
                   {rec.genres.map((genre) => (
                     <span className="genre-chip" key={`${rec.id}-${genre}`}>
                       {genre}
@@ -523,7 +527,7 @@ function App() {
         </div>
 
         {hasMore && !isLoadingRecs && (
-          <button className="load-more" onClick={loadMore}>
+          <button type="button" className="load-more" onClick={loadMore}>
             Load 10 more
           </button>
         )}
